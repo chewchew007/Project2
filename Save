@@ -1,0 +1,8 @@
+For work:
+-Create classes following OOP (Done? Should be the correct one at least)
+-Get input: grid size, initial state, broken light (Done)
+-Set error handling (Should work, internal check and loop, but do comment)
+-Get proper grid and data structure (Should be good)
+
+For feedback:(Point at a list in work (like problem with class/error) and write down the problem here.)
+-problem with grid: It seemed to stop printing state after 18 cols? row still work though, so it might be problem with how the LightRow save the states themselves.(Sorry but you might need to double check that yourself)
