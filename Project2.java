@@ -1,161 +1,301 @@
-
 package Project2;
 
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.HashSet;
+import org.jgrapht.*;
+import org.jgrapht.graph.*;
 
-class LightRow{
+class LightRow {
+
     int grid, row, brokenCol = -1; // grid size, row placement, broken light(if any, else -1)
     char[] lightState;
-    
-    public LightRow(int G, int R, char[] S){grid = G; row = R; lightState = S;}
-    
-    public void setBroken(int broken){ brokenCol = broken;}
-    
-    public void printState(){
-        System.out.printf("row %2d ",row); 
-        for(int i = 0; i < grid; i++){
+
+    public LightRow(int G, int R, char[] S) {
+        grid = G;
+        row = R;
+        lightState = S;
+    }
+
+    public void setBroken(int broken) {
+        brokenCol = broken;
+    }
+
+    public void printState() {
+        System.out.printf("row %2d ", row);
+        for (int i = 0; i < grid; i++) {
             System.out.print("|   ");
-            if(i == brokenCol){ // check if the i match the point where the broken light is or not(if have one)
+            if (i == brokenCol) { // check if the i match the point where the broken light is or not(if have one)
                 System.out.print(lightState[i] + "x  ");
+            } else {
+                System.out.print(lightState[i] + "   ");
             }
-            else{ System.out.print(lightState[i] + "   ");}
-            
+
         }
         System.out.println();
     }
 }
 
+class MoveEdge extends DefaultEdge {
+
+    private int row;
+    private int col;
+
+    public MoveEdge(int row, int col) {
+        this.row = row;
+        this.col = col;
+    }
+
+    public int getRow() {
+        return row;
+    }
+
+    public int getCol() {
+        return col;
+    }
+
+    @Override
+    public String toString() {
+        return "Move: row " + row + ", col " + col;
+    }
+}
+
 public class Project2 {
 
-    public static void main(String[] args) {
-        try{
+    public void menu() {
+        try {
             Scanner Scan = new Scanner(System.in);
-            int grid = 0, rowCount = 0, colCount;
-            String stateGet;
-            int brokenRow = 0, brokenCol = 0, testGet;
-            boolean pass = false;
-            ArrayList<LightRow> AllLights = new ArrayList<>(); // save all lightStates here
-            
-            System.out.print("Enter number of rows for square grid = ");
-            do{
-                if(Scan.hasNextInt()){ // check if the input is a number or not
-                    grid = Scan.nextInt();
-                    if(grid < 1){ // check if the input is positive number or not
-                        System.out.println("Input is less than 1, please try again.");
-                        System.out.print("Enter number of rows for square grid = ");
-                        Scan.nextLine();
-                    }
-                    else{pass = true; Scan.nextLine();}
-                    
-                }
-                else{
-                    System.out.println("Invalid input type, please try again.");
-                    System.out.print("Enter number of rows for square grid = ");
-                    Scan.nextLine();
-                }
-            }while(!pass); // finish getting grid input
-            
-            pass = false;
-            do{
-                System.out.printf("\nEnter initial light states(" + (grid*grid) + " states, Left to Right, Up to Down) = ");
-                stateGet = Scan.nextLine().trim();
-                if(stateGet.matches("[01]+")){ // check if the input is all 0 and 1 or not
-                    if(stateGet.length() != grid*grid){ // check if the input size is the same as grid size or not
-                        System.out.printf("State inputs are not equal to the grid size(" + (grid*grid) +" needed), please try again.");
-                    }
-                    else{pass = true;}
-                }
-                else{
-                    System.out.print("State inputs can only be either 0 or 1, please try again.");
-                }
-            }while(!pass); // finish getting state inputs
-            System.out.println();
-            
-            // Normal printing
-            
-            char[] splitState = stateGet.toCharArray(); // split stateGet into separate characters
-            char[] preState = new char[grid];
-            int mark = 0;
-            for(int i = 0; i < splitState.length; i++){
-                preState[mark] = splitState[i];
-                if(mark+1 == grid){ // check if the prepare State has enough states for a row
-                    AllLights.add(new LightRow(grid, rowCount, preState)); // set up the AllLights arrayList
-                    
-                    rowCount++; mark = 0;
-                    preState = new char[grid];
-                }
-                else{mark++;}
-            }
-            
+
+            int grid = getGridSize(Scan);
+            String stateGet = getInitialState(Scan, grid);
+            ArrayList<LightRow> AllLights = createLightRows(stateGet, grid);
+
             System.out.printf("This is grid: " + grid + "\n");
             System.out.printf("This is state: " + stateGet + "\n");
             System.out.println();
-            
-            System.out.print("       "); 
-            for(int i = 0; i < grid; i++){
-                System.out.printf("| col %-2d",i);
+
+            printGrid(grid, AllLights);
+
+            boolean setBroken = askForBrokenLight(Scan);
+
+            int brokenRow = 0;
+            int brokenCol = 0;
+
+            if (setBroken) {
+                int[] brokenPos = getBrokenPosition(Scan, grid);
+                brokenRow = brokenPos[0];
+                brokenCol = brokenPos[1];
+
+                AllLights.get(brokenRow).setBroken(brokenCol);
+
+                System.out.printf("This is broken row: " + brokenRow + "\n");
+                System.out.printf("This is broken column: " + brokenCol + "\n");
+
+                printGrid(grid, AllLights);
+
             }
-            System.out.println();
-            for (LightRow row : AllLights) {
-                row.printState();
-            }
-            System.out.println();
             
-            String wantBroken;
-            boolean setBroken = false;
-            pass = false;
-            
-            do{
-            System.out.printf("Set broken light(Y/N) ? ");
-            wantBroken = Scan.nextLine().trim().toUpperCase();
-            if("Y".equals(wantBroken)) {setBroken = true; pass = true;}
-            else if("N".equals(wantBroken)){pass = true;}
-            }
-            while(!pass);
-            
-            if(setBroken){
-                pass = false;
-                boolean passrow = false;
-            do{
-                if(!passrow) {System.out.printf("Enter row of broken light(0-" + (grid-1) + ")= ");}
-                else {System.out.print("Enter col of broken light(0-" + (grid-1) + ")= ");}
-                if(Scan.hasNextInt()){ // check if the input is a number or not
-                    testGet = Scan.nextInt();
-                    if(testGet < 0 || testGet > grid-1){ // check if the input is positive number or not and whether it is under the grid
-                        System.out.printf("Input is outside the grid size(0-" + (grid-1) + "), please try again.\n");
-                        Scan.nextLine();
+            Graph<String, MoveEdge> puzzleGraph = new SimpleDirectedGraph<>(MoveEdge.class);
+            Queue<String> queue = new LinkedList<>();
+            HashSet<String> visited = new HashSet<>();
+
+            puzzleGraph.addVertex(stateGet);
+            queue.add(stateGet);
+            visited.add(stateGet);
+
+            int nodeCount = 1;
+
+            while (!queue.isEmpty()) {
+                String current = queue.poll();
+
+                for (int r = 0; r < grid; r++) {
+                    for (int c = 0; c < grid; c++) {
+
+                        String nextState = toggleLight(current, grid, r, c, setBroken, brokenRow, brokenCol);
+
+                        if (!visited.contains(nextState)) {
+                            puzzleGraph.addVertex(nextState);
+                            visited.add(nextState);
+                            queue.add(nextState);
+                            nodeCount++;
+                        }
+
+                        puzzleGraph.addEdge(current, nextState, new MoveEdge(r, c));
                     }
-                    else{
-                        if(!passrow){brokenRow = testGet; passrow = true;}
-                        else{brokenCol = testGet; pass = true; Scan.nextLine();}
-                    }
-                    
                 }
-                else{
-                    System.out.println("Invalid input type, please try again.");
+            }
+
+            System.out.println("Graph generation complete. Total states (nodes) generated: " + nodeCount);
+            System.out.println("Total transitions (edges) generated: " + puzzleGraph.edgeSet().size());
+            System.out.println("--- Ready for Developer 3 (Solver) ---");
+            
+            
+        } catch (Exception ex) {
+            System.out.print("Got problem here.");
+        }
+    }
+
+    private String toggleLight(String currentState, int grid, int targetRow, int targetCol, boolean hasBroken, int bRow, int bCol) {
+        char[] state = currentState.toCharArray();
+
+        toggle(state, grid, targetRow, targetCol);
+
+        if (hasBroken && targetRow == bRow && targetCol == bCol) {
+            toggle(state, grid, targetRow - 1, targetCol - 1);
+            toggle(state, grid, targetRow - 1, targetCol + 1);
+            toggle(state, grid, targetRow + 1, targetCol - 1);
+            toggle(state, grid, targetRow + 1, targetCol + 1);
+        } else {
+            toggle(state, grid, targetRow - 1, targetCol);
+            toggle(state, grid, targetRow + 1, targetCol);
+            toggle(state, grid, targetRow, targetCol - 1);
+            toggle(state, grid, targetRow, targetCol + 1);
+        }
+        return new String(state);
+    }
+
+    private void toggle(char[] state, int grid, int r, int c) {
+        if (r >= 0 && r < grid && c >= 0 && c < grid) {
+            int index = (r * grid) + c;
+            state[index] = (state[index] == '0') ? '1' : '0';
+        }
+    }
+
+    private int getGridSize(Scanner Scan) {
+        int grid = 0;
+        boolean pass = false;
+        System.out.print("Enter number of rows for square grid = ");
+        do {
+            if (Scan.hasNextInt()) {
+                grid = Scan.nextInt();
+                if (grid < 1) {
+                    System.out.println("Input is less than 1, please try again.");
+                    System.out.print("Enter number of rows for square grid = ");
+                    Scan.nextLine();
+                } else {
+                    pass = true;
                     Scan.nextLine();
                 }
-            }while(!pass); // finish getting broken inputs
-            System.out.println();
-            
-            AllLights.get(brokenRow).setBroken(brokenCol); // set the column's light state in the chosen row to be broken
-            
-            System.out.printf("This is broken row: " + brokenRow + "\n");
-            System.out.printf("This is broken column: " + brokenCol + "\n");
-            //} // can remove this for using the print below later, but now it is used to check if the broken is put correctly or not
-            
-            System.out.print("       "); 
-            for(int i = 0; i < grid; i++){
-                System.out.printf("| col %-2d",i);
+            } else {
+                System.out.println("Invalid input type, please try again.");
+                System.out.print("Enter number of rows for square grid = ");
+                Scan.nextLine();
             }
-            System.out.println();
-            for (LightRow row : AllLights) {
-                row.printState();
+        } while (!pass);
+        return grid;
+    }
+
+    private String getInitialState(Scanner Scan, int grid) {
+        String stateGet = "";
+        boolean pass = false;
+        do {
+            System.out.printf("\nEnter initial light states(" + (grid * grid) + " states, Left to Right, Up to Down) = ");
+            stateGet = Scan.nextLine().trim();
+            if (stateGet.matches("[01]+")) {
+                if (stateGet.length() != grid * grid) {
+                    System.out.printf("State inputs are not equal to the grid size(" + (grid * grid) + " needed), please try again.");
+                } else {
+                    pass = true;
+                }
+            } else {
+                System.out.print("State inputs can only be either 0 or 1, please try again.");
             }
-            } // remove this if needed, as long as you uncomment the one at line 156
-            
+        } while (!pass);
+        System.out.println();
+        return stateGet;
+    }
+
+    private ArrayList<LightRow> createLightRows(String stateGet, int grid) {
+        ArrayList<LightRow> AllLights = new ArrayList<>();
+        int rowCount = 0;
+        char[] splitState = stateGet.toCharArray();
+        char[] preState = new char[grid];
+        int mark = 0;
+        for (int i = 0; i < splitState.length; i++) {
+            preState[mark] = splitState[i];
+            if (mark + 1 == grid) {
+                AllLights.add(new LightRow(grid, rowCount, preState));
+                rowCount++;
+                mark = 0;
+                preState = new char[grid];
+            } else {
+                mark++;
+            }
         }
-        catch(Exception ex){System.out.print("Got problem here.");}
+        return AllLights;
+    }
+
+    private void printGrid(int grid, ArrayList<LightRow> AllLights) {
+        System.out.print("       ");
+        for (int i = 0; i < grid; i++) {
+            System.out.printf("| col %-2d", i);
+        }
+        System.out.println();
+        for (LightRow row : AllLights) {
+            row.printState();
+        }
+        System.out.println();
+    }
+
+    private boolean askForBrokenLight(Scanner Scan) {
+        String wantBroken;
+        boolean setBroken = false;
+        boolean pass = false;
+        do {
+            System.out.printf("Set broken light(Y/N) ? ");
+            wantBroken = Scan.nextLine().trim().toUpperCase();
+            if ("Y".equals(wantBroken)) {
+                setBroken = true;
+                pass = true;
+            } else if ("N".equals(wantBroken)) {
+                pass = true;
+            }
+        } while (!pass);
+        return setBroken;
+    }
+
+    private int[] getBrokenPosition(Scanner Scan, int grid) {
+        int brokenRow = 0;
+        int brokenCol = 0;
+        boolean pass = false;
+        boolean passrow = false;
+        int testGet;
+
+        do {
+            if (!passrow) {
+                System.out.printf("Enter row of broken light(0-" + (grid - 1) + ")= ");
+            } else {
+                System.out.print("Enter col of broken light(0-" + (grid - 1) + ")= ");
+            }
+            if (Scan.hasNextInt()) {
+                testGet = Scan.nextInt();
+                if (testGet < 0 || testGet > grid - 1) {
+                    System.out.printf("Input is outside the grid size(0-" + (grid - 1) + "), please try again.\n");
+                    Scan.nextLine();
+                } else {
+                    if (!passrow) {
+                        brokenRow = testGet;
+                        passrow = true;
+                    } else {
+                        brokenCol = testGet;
+                        pass = true;
+                        Scan.nextLine();
+                    }
+                }
+            } else {
+                System.out.println("Invalid input type, please try again.");
+                Scan.nextLine();
+            }
+        } while (!pass);
+        System.out.println();
+
+        return new int[]{brokenRow, brokenCol};
+    }
+
+    public static void main(String[] args) {
+        Project2 mainapp = new Project2();
+        mainapp.menu();
     }
 }
