@@ -5,6 +5,8 @@ import java.util.Scanner;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
 import org.jgrapht.*;
 import org.jgrapht.graph.*;
 
@@ -72,10 +74,6 @@ public class Project2 {
             String stateGet = getInitialState(Scan, grid);
             ArrayList<LightRow> AllLights = createLightRows(stateGet, grid);
 
-            System.out.printf("This is grid: " + grid + "\n");
-            System.out.printf("This is state: " + stateGet + "\n");
-            System.out.println();
-
             printGrid(grid, AllLights);
 
             boolean setBroken = askForBrokenLight(Scan);
@@ -90,13 +88,10 @@ public class Project2 {
 
                 AllLights.get(brokenRow).setBroken(brokenCol);
 
-                System.out.printf("This is broken row: " + brokenRow + "\n");
-                System.out.printf("This is broken column: " + brokenCol + "\n");
-
-                printGrid(grid, AllLights);
+                //printGrid(grid, AllLights);
 
             }
-            
+
             Graph<String, MoveEdge> puzzleGraph = new SimpleDirectedGraph<>(MoveEdge.class);
             Queue<String> queue = new LinkedList<>();
             HashSet<String> visited = new HashSet<>();
@@ -127,11 +122,78 @@ public class Project2 {
                 }
             }
 
-            System.out.println("Graph generation complete. Total states (nodes) generated: " + nodeCount);
-            System.out.println("Total transitions (edges) generated: " + puzzleGraph.edgeSet().size());
-            System.out.println("--- Ready for Developer 3 (Solver) ---");
-            
-            
+            String goalState = "0".repeat(grid * grid);
+
+// BFS to find shortest path from stateGet to goalState
+            Map<String, String> parentMap = new HashMap<>();   // child -> parent state
+            Map<String, MoveEdge> moveMap = new HashMap<>();   // child -> edge used to reach it
+
+            Queue<String> bfsQueue = new LinkedList<>();
+            parentMap.put(stateGet, null);
+            bfsQueue.add(stateGet);
+
+            boolean found = false;
+
+            if (stateGet.equals(goalState)) {
+                found = true;
+            }
+
+            while (!bfsQueue.isEmpty() && !found) {
+                String curr = bfsQueue.poll();
+                for (MoveEdge edge : puzzleGraph.outgoingEdgesOf(curr)) {
+                    String next = puzzleGraph.getEdgeTarget(edge);
+                    if (!parentMap.containsKey(next)) {
+                        parentMap.put(next, curr);
+                        moveMap.put(next, edge);
+                        if (next.equals(goalState)) {
+                            found = true;
+                            break;
+                        }
+                        bfsQueue.add(next);
+                    }
+                }
+            }
+
+            if (!found) {
+                System.out.println("\nNo solution !!");
+            } else {
+                // Reconstruct path
+                LinkedList<String> path = new LinkedList<>();
+                LinkedList<MoveEdge> moves = new LinkedList<>();
+                String cur = goalState;
+                while (parentMap.get(cur) != null) {
+                    path.addFirst(cur);
+                    moves.addFirst(moveMap.get(cur));
+                    cur = parentMap.get(cur);
+                }
+                path.addFirst(stateGet); // add initial state
+
+                System.out.println();
+                System.out.println(moves.size() + " moves to turn off all lights");
+
+                for (int step = 0; step < moves.size(); step++) {
+                    MoveEdge move = moves.get(step);
+                    String nextState = path.get(step + 1);
+
+                    // Determine turn on or turn off (check the toggled cell in nextState)
+                    String prevState = path.get(step);
+                    int idx = move.getRow() * grid + move.getCol();
+                    char cellBefore = prevState.charAt(idx);
+                    String action = (cellBefore == '1') ? "turn off" : "turn on";
+
+                    System.out.println("\n>>> Move " + (step + 1) + " : " + action
+                            + " row " + move.getRow() + ", col " + move.getCol());
+                    System.out.println("States in bits = " + nextState);
+
+                    // Update AllLights display for this step
+                    ArrayList<LightRow> stepLights = createLightRows(nextState, grid);
+                    if (setBroken) {
+                        stepLights.get(brokenRow).setBroken(brokenCol);
+                    }
+                    printGrid(grid, stepLights);
+                }
+            }
+
         } catch (Exception ex) {
             System.out.print("Got problem here.");
         }
@@ -191,7 +253,7 @@ public class Project2 {
         String stateGet = "";
         boolean pass = false;
         do {
-            System.out.printf("\nEnter initial light states(" + (grid * grid) + " states, Left to Right, Up to Down) = ");
+            System.out.printf("\nEnter initial light states(" + (grid * grid) + " states, Left to Right, line by line) = ");
             stateGet = Scan.nextLine().trim();
             if (stateGet.matches("[01]+")) {
                 if (stateGet.length() != grid * grid) {
